@@ -25,8 +25,10 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 
-#define RX_PIN 2 // Connected to TX of module
-#define TX_PIN 3 // Connected to RX of module
+#define RX_PIN 2    // Connected to TX of module
+#define TX_PIN 3    // Connected to RX of module
+#define DELAY 5000  // Bluetooth state transmit delay
+#define BAUD 115200 // Default baud rate
 
 // First byte of button(s) masks
 #define BTN_CROSS    0x01 // (0000 0001)
@@ -53,24 +55,29 @@ struct PSXState state;
 
 
 void setup() {
-    Serial.begin(115200);
-    swSerial.begin(115200);
-    Serial.println("Loaded module.");
+    Serial.begin(BAUD);
+    swSerial.begin(BAUD);
+    Serial.println("Starting Bluetooth PSX Controller..");
 }
 
+// Looping poll PSX controller for state, create HID command, and transmit
+// over bluetooth serial connection.
 void loop() {
-    uint8_t command1[8] = {0xFD, 0x06, 0x90, 0x90, 0x90, 0x90, 0x01, 0x01};
-    swSerial.write(command1, sizeof(command1));
-    delay(5000);
 
-    uint8_t command2[8] = {0xFD, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    swSerial.write(command2, sizeof(command2));
-    delay(5000);
+    // Fetch PSX state
+
+    // Parse and transmit over bluetooth
+    uint8_t* cmnd = HIDCommand(state);
+    swSerial.write(cmnd, 8);
+    delete[] cmnd;
+
+    // Delay to not overload HC-05 module
+    delay(DELAY);
 }
 
 // Generate the HID command seqeunce in respect to the current state of
-// PSX gamepad. Returns a pointer to an array containing the 8-byte sequence.
-// Returns a dynamically created array, ensure memory freed after use of returned value.
+// PSX gamepad. Returns a pointer to a dynamic array containing the 8-byte sequence.
+// Ensure memory freed after use of returned value to avoid mem leaks.
 uint8_t* HIDCommand(PSXState state) {
 
     // General
