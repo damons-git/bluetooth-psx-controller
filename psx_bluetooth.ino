@@ -67,3 +67,46 @@ void loop() {
     swSerial.write(command2, sizeof(command2));
     delay(5000);
 }
+
+// Generate the HID command seqeunce in respect to the current state of
+// PSX gamepad. Returns a pointer to an array containing the 8-byte sequence.
+// Returns a dynamically created array, ensure memory freed after use of returned value.
+uint8_t* HIDCommand(PSXState state) {
+
+    // General
+    uint8_t* command = new uint8_t[8];
+    command[0] = 0xFD;
+    command[1] = 0x06;
+
+    // Analogue stick(s)
+    command[2] = 0x00;
+    command[3] = 0x00;
+    command[4] = 0x00; 
+    command[5] = 0x00;
+
+    // Buttons (0 - 7)
+    uint8_t btnMask_1 = 0x00;
+    if (state.cross)    { btnMask_1 |= BTN_CROSS;     }
+    if (state.circle)   { btnMask_1 |= BTN_CIRCLE;    }
+    if (state.square)   { btnMask_1 |= BTN_SQUARE;    }
+    if (state.triangle) { btnMask_1 |= BTN_TRIANGLE;  }
+    if (state.lb)       { btnMask_1 |= BTN_LB;        }
+    if (state.rb)       { btnMask_1 |= BTN_RB;        }
+    if (state.lt)       { btnMask_1 |= BTN_LT;        }
+    if (state.rt)       { btnMask_1 |= BTN_RT;        }
+    command[6] = btnMask_1;
+
+    // Buttons (8- 15)
+    uint8_t btnMask_2 = 0x00;
+    if (state.select)   { btnMask_2 |= BTN_SELECT;    }
+    if (state.start)    { btnMask_2 |= BTN_START;     }
+    if (state.lthumb)   { btnMask_2 |= BTN_LTHUMB;    }
+    if (state.rthumb)   { btnMask_2 |= BTN_RTHUMB;    }
+    if (state.up)       { btnMask_2 |= BTN_UP;        }
+    if (state.down)     { btnMask_2 |= BTN_DOWN;      }
+    if (state.left)     { btnMask_2 |= BTN_LEFT;      }
+    if (state.right)    { btnMask_2 |= BTN_RIGHT;     }
+    command[7] = btnMask_2;
+    
+    return command;
+}

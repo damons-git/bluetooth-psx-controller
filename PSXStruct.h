@@ -33,4 +33,4 @@ struct PSXState {
         PSXState();
 };
 
-#endif PSX_STRUCT_H
+#endif // PSX_STRUCT_H
