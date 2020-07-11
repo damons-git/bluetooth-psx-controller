@@ -22,12 +22,12 @@
 */
 
 #include "PSXStruct.h"
+#include "PSXInterface.h"
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 
 #define RX_PIN 2    // Connected to TX of module
 #define TX_PIN 3    // Connected to RX of module
-#define DELAY 5000  // Bluetooth state transmit delay
 #define BAUD 115200 // Default baud rate
 
 // First byte of button(s) masks
@@ -50,35 +50,45 @@
 #define BTN_LEFT     0x40 // (0100 0000)
 #define BTN_RIGHT    0x80 // (1000 0000)
 
+// PSX Controller pins
+#define DATA 13
+#define CMND 12
+#define ATT  11
+#define CLK  10
+
 SoftwareSerial swSerial(RX_PIN, TX_PIN);
-struct PSXState state;
+PSXController controller(DATA, CMND, ATT, CLK);
 
 
+// Setup
 void setup() {
     Serial.begin(BAUD);
     swSerial.begin(BAUD);
-    Serial.println("Starting Bluetooth PSX Controller..");
 }
 
-// Looping poll PSX controller for state, create HID command, and transmit
+
+// Poll PSX controller for state, create HID command, and transmit
 // over bluetooth serial connection.
 void loop() {
 
-    // Fetch PSX state
+    // Fetch PSX controller state
+    PSXState* state = controller.poll(); 
 
     // Parse and transmit over bluetooth
     uint8_t* cmnd = HIDCommand(state);
     swSerial.write(cmnd, 8);
-    delete[] cmnd;
 
-    // Delay to not overload HC-05 module
-    delay(DELAY);
+    // Clean-up and delay to avoid overloading HC-05
+    delete state;
+    delete[] cmnd;
+    delay(5000);
 }
+
 
 // Generate the HID command seqeunce in respect to the current state of
 // PSX gamepad. Returns a pointer to a dynamic array containing the 8-byte sequence.
 // Ensure memory freed after use of returned value to avoid mem leaks.
-uint8_t* HIDCommand(PSXState state) {
+uint8_t* HIDCommand(PSXState* state) {
 
     // General
     uint8_t* command = new uint8_t[8];
@@ -93,26 +103,26 @@ uint8_t* HIDCommand(PSXState state) {
 
     // Buttons (0 - 7)
     uint8_t btnMask_1 = 0x00;
-    if (state.cross)    { btnMask_1 |= BTN_CROSS;     }
-    if (state.circle)   { btnMask_1 |= BTN_CIRCLE;    }
-    if (state.square)   { btnMask_1 |= BTN_SQUARE;    }
-    if (state.triangle) { btnMask_1 |= BTN_TRIANGLE;  }
-    if (state.lb)       { btnMask_1 |= BTN_LB;        }
-    if (state.rb)       { btnMask_1 |= BTN_RB;        }
-    if (state.lt)       { btnMask_1 |= BTN_LT;        }
-    if (state.rt)       { btnMask_1 |= BTN_RT;        }
+    if (state->cross)    { btnMask_1 |= BTN_CROSS;     }
+    if (state->circle)   { btnMask_1 |= BTN_CIRCLE;    }
+    if (state->square)   { btnMask_1 |= BTN_SQUARE;    }
+    if (state->triangle) { btnMask_1 |= BTN_TRIANGLE;  }
+    if (state->lb)       { btnMask_1 |= BTN_LB;        }
+    if (state->rb)       { btnMask_1 |= BTN_RB;        }
+    if (state->lt)       { btnMask_1 |= BTN_LT;        }
+    if (state->rt)       { btnMask_1 |= BTN_RT;        }
     command[6] = btnMask_1;
 
     // Buttons (8- 15)
     uint8_t btnMask_2 = 0x00;
-    if (state.select)   { btnMask_2 |= BTN_SELECT;    }
-    if (state.start)    { btnMask_2 |= BTN_START;     }
-    if (state.lthumb)   { btnMask_2 |= BTN_LTHUMB;    }
-    if (state.rthumb)   { btnMask_2 |= BTN_RTHUMB;    }
-    if (state.up)       { btnMask_2 |= BTN_UP;        }
-    if (state.down)     { btnMask_2 |= BTN_DOWN;      }
-    if (state.left)     { btnMask_2 |= BTN_LEFT;      }
-    if (state.right)    { btnMask_2 |= BTN_RIGHT;     }
+    if (state->select)   { btnMask_2 |= BTN_SELECT;    }
+    if (state->start)    { btnMask_2 |= BTN_START;     }
+    if (state->lthumb)   { btnMask_2 |= BTN_LTHUMB;    }
+    if (state->rthumb)   { btnMask_2 |= BTN_RTHUMB;    }
+    if (state->up)       { btnMask_2 |= BTN_UP;        }
+    if (state->down)     { btnMask_2 |= BTN_DOWN;      }
+    if (state->left)     { btnMask_2 |= BTN_LEFT;      }
+    if (state->right)    { btnMask_2 |= BTN_RIGHT;     }
     command[7] = btnMask_2;
     
     return command;
