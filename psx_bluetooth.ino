@@ -82,7 +82,7 @@ void loop() {
     // Clean-up and delay to avoid overloading HC-05
     delete state;
     delete[] cmnd;
-    delay(5000);
+    delay(2000);
     Serial.print("\n");
 }
 
