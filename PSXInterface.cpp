@@ -33,11 +33,8 @@ PSXState* PSXController::poll() {
     digitalWrite(this->attentionPin, LOW);
 
     // Transmit start (0x01)
-    Serial.print("Transmitting start byte (0x01 - 0b00000001): ");
     for (int i = 0; i < 8; i++) {
         int singleBit = (0x01 & (1 << i));
-        Serial.print(singleBit);
-        Serial.print("|");
         if (singleBit) {
             digitalWrite(this->commandPin, HIGH);  
         } else {
@@ -48,15 +45,11 @@ PSXState* PSXController::poll() {
         delayMicroseconds(50);
         digitalWrite(this->clockPin, HIGH);
     }
-    Serial.print("\n");
 
     // Transmit data request (0x42) and receive controller type
-    Serial.print("Transmitting data reqest byte (0x42 - 0b01000010): ");
     byte controllerType = 0x00;
     for (int i = 0; i < 8; i++) {
         int singleBit = (0x42 & (1 << i));
-        Serial.print(singleBit);
-        Serial.print("|");
         if (singleBit) {
             digitalWrite(this->commandPin, HIGH);  
         } else {
@@ -73,20 +66,13 @@ PSXState* PSXController::poll() {
 
         digitalWrite(this->clockPin, HIGH);
     }
-    Serial.print("\n");
-    Serial.print("Reading controller type: 0x");
-    Serial.println(reverseByte(controllerType), HEX);
 
     // Ignore commening read data (0x5A received on data)
-    Serial.print("Reading commencing data (0x5A - 0b01011010): ");
     for (int i = 0; i < 8; i++) {
         digitalWrite(this->clockPin, LOW);
         delayMicroseconds(50);
-        Serial.print(digitalRead(this->dataPin));
-        Serial.print("|");
         digitalWrite(this->clockPin, HIGH);
     }
-    Serial.print("\n");
 
     // Read following six-bytes on data line
     byte data [6] ;
@@ -97,7 +83,6 @@ PSXState* PSXController::poll() {
           
             int tempBit = digitalRead(this->dataPin);
             if (tempBit) {
-            // if (tempBit == 0) {
                 tempByte |= (0b10000000 >> j);
             }
  
@@ -105,11 +90,9 @@ PSXState* PSXController::poll() {
         }
 
         data[i] = reverseByte(tempByte) ^ 0xFF;
-        Serial.println(data[i]);
     }
 
     debug(data);
-
     digitalWrite(this->attentionPin, HIGH);
     return state;
 }
