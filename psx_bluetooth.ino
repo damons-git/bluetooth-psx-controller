@@ -51,10 +51,10 @@
 #define BTN_RIGHT    0x80 // (1000 0000)
 
 // PSX Controller pins
-#define DATA 13
-#define CMND 12
-#define ATT  11
-#define CLK  10
+#define DATA 11
+#define CMND 9
+#define ATT  10
+#define CLK  8
 
 SoftwareSerial swSerial(RX_PIN, TX_PIN);
 PSXController controller(DATA, CMND, ATT, CLK);
@@ -63,6 +63,7 @@ PSXController controller(DATA, CMND, ATT, CLK);
 // Setup
 void setup() {
     Serial.begin(BAUD);
+    Serial.write("Module loaded.");
     swSerial.begin(BAUD);
 }
 
@@ -82,6 +83,7 @@ void loop() {
     delete state;
     delete[] cmnd;
     delay(5000);
+    Serial.print("\n");
 }
 
 
