@@ -44,6 +44,7 @@ PSXState* PSXController::poll() {
         digitalWrite(this->clockPin, LOW);
         delayMicroseconds(50);
         digitalWrite(this->clockPin, HIGH);
+        delayMicroseconds(50);
     }
 
     // Transmit data request (0x42) and receive controller type
@@ -65,6 +66,7 @@ PSXState* PSXController::poll() {
         }
 
         digitalWrite(this->clockPin, HIGH);
+        delayMicroseconds(50);
     }
 
     // Ignore commening read data (0x5A received on data)
@@ -72,6 +74,7 @@ PSXState* PSXController::poll() {
         digitalWrite(this->clockPin, LOW);
         delayMicroseconds(50);
         digitalWrite(this->clockPin, HIGH);
+        delayMicroseconds(50);
     }
 
     // Read following six-bytes on data line
@@ -80,6 +83,7 @@ PSXState* PSXController::poll() {
         byte tempByte = 0x00;
         for (int j = 0; j < 8; j++) {
             digitalWrite(this->clockPin, LOW);
+            delayMicroseconds(50);
           
             int tempBit = digitalRead(this->dataPin);
             if (tempBit) {
@@ -87,6 +91,7 @@ PSXState* PSXController::poll() {
             }
  
             digitalWrite(this->clockPin, HIGH);
+            delayMicroseconds(50);
         }
 
         data[i] = reverseByte(tempByte) ^ 0xFF;
