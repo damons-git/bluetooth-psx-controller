@@ -14,6 +14,7 @@
 #include "PSXStruct.h"
 #include <Arduino.h>
 
+// PSX Controller button response mask (Analogue red variant)
 #define SELECT    0x01
 #define JOYRIGHT  0x02
 #define JOYLEFT   0x04
@@ -38,16 +39,20 @@
 
 class PSXController {
     public:
-        PSXController(byte data, byte cmnd, byte att, byte clk);
+        PSXController(byte data, byte cmnd, byte att, byte clk, double deadzone = 0.0);
         struct PSXState* poll();
 
     private:
         void debug(byte* data);
         byte reverseByte(byte data);
+        struct PSXState* respToState(byte* data);
+        byte addDeadzone(byte analogueData);
+        
         byte dataPin;
         byte commandPin;;
         byte attentionPin;
         byte clockPin;
+        double deadzonePercent;
 };
 
 #endif // PSX_INTERFACE_H

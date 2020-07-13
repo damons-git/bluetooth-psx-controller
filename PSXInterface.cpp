@@ -2,11 +2,18 @@
 #include "PSXStruct.h"
 #include "PSXInterface.h"
 
-PSXController::PSXController(byte data, byte cmnd, byte att, byte clk) {
+// Instantiate a new PSXInterface object.
+// data : pin number for data line
+// cmnd : pin number for command line
+// att  : pin number for attention
+// clk  : pin number for clock
+// deadzone : percent of analogue stick around center that is inactive, increase if drifting.
+PSXController::PSXController(byte data, byte cmnd, byte att, byte clk, double deadzone = 0.0) {
     this->dataPin = data;
     this->commandPin = cmnd;
     this->attentionPin = att;
     this->clockPin = clk;
+    this->deadzonePercent = deadzone;
 
     pinMode(data, INPUT);
     pinMode(cmnd, OUTPUT);
@@ -18,6 +25,7 @@ PSXController::PSXController(byte data, byte cmnd, byte att, byte clk) {
     digitalWrite(clk, HIGH);
 }
 
+
 // Pull attention pin low to commence communication
 // Command line 0x01 (start)
 // Command line 0x42 (request) simultaneous receive on Data line 0x73 (controller type)
@@ -26,10 +34,8 @@ PSXController::PSXController(byte data, byte cmnd, byte att, byte clk) {
 //
 // N.B. Clock needs to pull low during transmission of bit and back high after.
 // N.B. All transmissions are read/written LSB first (little endian)
-// N.B. 
 //
 PSXState* PSXController::poll() {
-    struct PSXState* state = new PSXState();
     digitalWrite(this->attentionPin, LOW);
 
     // Transmit start (0x01)
@@ -70,15 +76,28 @@ PSXState* PSXController::poll() {
     }
 
     // Ignore commening read data (0x5A received on data)
+    byte commencingData = 0x00;
     for (int i = 0; i < 8; i++) {
         digitalWrite(this->clockPin, LOW);
         delayMicroseconds(50);
+
+        int tempBit = digitalRead(this->dataPin);
+        if (tempBit) {
+            commencingData |= (0b10000000 >> i);
+        }
+        
         digitalWrite(this->clockPin, HIGH);
         delayMicroseconds(50);
     }
+    // Halt failed reads, re-request data.
+    if (commencingData != 0x5A) {
+        digitalWrite(this->attentionPin, HIGH);
+        delayMicroseconds(100);
+        return poll();   
+    }
 
     // Read following six-bytes on data line
-    byte data [6] ;
+    byte resp [6] ;
     for (int i = 0; i < 6; i++) {
         byte tempByte = 0x00;
         for (int j = 0; j < 8; j++) {
@@ -94,39 +113,76 @@ PSXState* PSXController::poll() {
             delayMicroseconds(50);
         }
 
-        data[i] = reverseByte(tempByte) ^ 0xFF;
+        resp[i] = reverseByte(tempByte);
     }
 
-    debug(data);
+    // debug(resp); // Uncomment to display debug output
     digitalWrite(this->attentionPin, HIGH);
+    delayMicroseconds(100);
+    struct PSXState* state = respToState(resp);
     return state;
 }
+
+
+// Convert the byte response from the controller to the internal
+// PSX controller struct format
+PSXState* PSXController::respToState(byte* data) {
+    struct PSXState* psx = new PSXState();
+  
+    byte buttonsOne =  data[0] ^ 0xFF;
+    byte buttonsTwo =  data[1] ^ 0xFF;
+    int8_t rightThumbX = (int) addDeadzone(data[2]) - 128;
+    int8_t rightThumbY = (int) addDeadzone(data[3]) - 128;
+    int8_t leftThumbX =  (int) addDeadzone(data[4]) - 128;
+    int8_t leftThumbY =  (int) addDeadzone(data[5]) - 128;
+
+    if (buttonsOne & SELECT)   psx->select   = true;
+    if (buttonsOne & JOYRIGHT) psx->rthumb   = true;
+    if (buttonsOne & JOYLEFT)  psx->lthumb   = true;
+    if (buttonsOne & START)    psx->start    = true;
+    if (buttonsOne & UP)       psx->up       = true;
+    if (buttonsOne & RIGHT)    psx->right    = true;
+    if (buttonsOne & DOWN)     psx->down     = true;
+    if (buttonsOne & LEFT)     psx->left     = true;
+    if (buttonsTwo & L2)       psx->lt       = true;
+    if (buttonsTwo & R2)       psx->rt       = true;
+    if (buttonsTwo & L1)       psx->lb       = true;
+    if (buttonsTwo & R1)       psx->rb       = true;
+    if (buttonsTwo & TRIANGLE) psx->triangle = true;
+    if (buttonsTwo & CIRCLE)   psx->circle   = true;
+    if (buttonsTwo & CROSS)    psx->cross    = true;
+    if (buttonsTwo & SQUARE)   psx->square   = true;
+
+    psx->lthumb_x = leftThumbX;
+    psx->lthumb_y = leftThumbY;
+    psx->rthumb_x = rightThumbX;
+    psx->rthumb_y = rightThumbY;
+
+    return psx;
+}
+
 
 // Reverse the bit order of a given byte
 byte PSXController::reverseByte(byte data) {
     byte out = 0x00;
-
     for (int i = 0; i < 8; i++) {
         int mask = (int) ceil(pow(2, i));
         if (data & mask) {
           out |= 0x01 << (7 - i);
         }
     }
-
     return out;
 }
 
-void PSXController::debug(byte* data) {
-    byte buttonsOne =  data[0];
-    byte buttonsTwo =  data[1];
-    byte rightThumbX = data[2];
-    byte rightThumbY = data[3];
-    byte leftThumbX =  data[4];
-    byte leftThumbY =  data[5];
 
-    Serial.print("\n");
-    Serial.println("Debug Output:");
-    Serial.println("-------------");
+// Print a debug output of the controller response data
+void PSXController::debug(byte* data) {
+    byte buttonsOne =  data[0] ^ 0xFF;
+    byte buttonsTwo =  data[1] ^ 0xFF;
+    uint8_t rightThumbX = data[2];
+    uint8_t rightThumbY = data[3];
+    uint8_t leftThumbX =  data[4];
+    uint8_t leftThumbY =  data[5];
 
     if (buttonsOne & SELECT)   Serial.println("SELECT");
     if (buttonsOne & JOYRIGHT) Serial.println("JOYRIGHT");
@@ -152,4 +208,24 @@ void PSXController::debug(byte* data) {
     Serial.print("Left analogue stick:  ");
     Serial.print("X: " + (String) leftThumbX + " | ");
     Serial.println("Y: " + (String) leftThumbY);
+
+    Serial.print("\n");
+}
+
+
+// Adds deadzone to joystick reading
+// PSX analogue stick readings range from 0x00 - 0xFF.
+// Dependent on the deadzone percent limit this function will
+// consider some minor movements centered.
+byte PSXController::addDeadzone(byte analogueReading) {
+    int deadRange = (int) ceil(255 * this->deadzonePercent);
+    byte centered = 0x7F; // ceil(255/2) = 127
+    Serial.println(analogueReading, HEX);
+    Serial.println(deadRange);
+
+    if ((analogueReading > (centered - deadRange)) && (analogueReading < (centered + deadRange))) {
+        return centered;
+    } else {
+        return analogueReading;  
+    }
 }

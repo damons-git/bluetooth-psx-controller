@@ -57,13 +57,12 @@
 #define CLK  8
 
 SoftwareSerial swSerial(RX_PIN, TX_PIN);
-PSXController controller(DATA, CMND, ATT, CLK);
+PSXController controller(DATA, CMND, ATT, CLK, 0.15);
 
 
 // Setup
 void setup() {
     Serial.begin(BAUD);
-    Serial.write("Module loaded.");
     swSerial.begin(BAUD);
 }
 
@@ -82,8 +81,6 @@ void loop() {
     // Clean-up and delay to avoid overloading HC-05
     delete state;
     delete[] cmnd;
-    delay(2000);
-    Serial.print("\n");
 }
 
 
@@ -98,10 +95,10 @@ uint8_t* HIDCommand(PSXState* state) {
     command[1] = 0x06;
 
     // Analogue stick(s)
-    command[2] = 0x00;
-    command[3] = 0x00;
-    command[4] = 0x00; 
-    command[5] = 0x00;
+    command[2] = state->lthumb_x;
+    command[3] = state->lthumb_y;
+    command[4] = state->rthumb_x;
+    command[5] = state->rthumb_y;
 
     // Buttons (0 - 7)
     uint8_t btnMask_1 = 0x00;
