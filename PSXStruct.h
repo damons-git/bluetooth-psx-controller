@@ -26,10 +26,10 @@ struct PSXState {
         bool down;            // D-pad down
         bool left;            // D-pad left
         bool right;           // D-pad right
-        short int lthumb_x;   // X-coordinate of left thumb stick
-        short int lthumb_y;   // Y-coordinate of left thumb stick
-        short int rthumb_x;   // X-coordinate of right thumb stick
-        short int rthumb_y;   // Y-coordinate of right thumb stick
+        int8_t lthumb_x;      // X-coordinate of left thumb stick
+        int8_t lthumb_y;      // Y-coordinate of left thumb stick
+        int8_t rthumb_x;      // X-coordinate of right thumb stick
+        int8_t rthumb_y;      // Y-coordinate of right thumb stick
         PSXState();
 };
 

@@ -116,7 +116,7 @@ PSXState* PSXController::poll() {
         resp[i] = reverseByte(tempByte);
     }
 
-    // debug(resp); // Uncomment to display debug output
+    debug(resp); // Uncomment to display debug output
     digitalWrite(this->attentionPin, HIGH);
     delayMicroseconds(100);
     struct PSXState* state = respToState(resp);
@@ -216,12 +216,10 @@ void PSXController::debug(byte* data) {
 // Adds deadzone to joystick reading
 // PSX analogue stick readings range from 0x00 - 0xFF.
 // Dependent on the deadzone percent limit this function will
-// consider some minor movements centered.
+// consider minor stick movements around center, centered.
 byte PSXController::addDeadzone(byte analogueReading) {
     int deadRange = (int) ceil(255 * this->deadzonePercent);
     byte centered = 0x7F; // ceil(255/2) = 127
-    Serial.println(analogueReading, HEX);
-    Serial.println(deadRange);
 
     if ((analogueReading > (centered - deadRange)) && (analogueReading < (centered + deadRange))) {
         return centered;
